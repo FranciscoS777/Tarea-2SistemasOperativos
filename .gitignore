@@ -1,0 +1,6 @@
+torneo
+torneo_debug
+prueba_unidad
+*.o
+*.log
+build/.vscode/
