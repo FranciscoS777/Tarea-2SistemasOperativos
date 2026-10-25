@@ -4,3 +4,4 @@ prueba_unidad
 *.o
 *.log
 build/.vscode/
+.vscode/

@@ -1,0 +1,13 @@
+retardo_min_ms=50
+retardo_max_ms=300
+seed=2026
+puma=T
+perros=2,0;2,4;3,0;3,1;3,2;3,3;3,4;4,0;4,1;4,2;4,3;4,4
+max_movimientos=1000
+duracion_max_ms=30000
+log_cada=20
+tiempo_desconexion_ms=5000
+abandono_puma_ms=-1
+abandono_perros_ms=-1
+fallo_puma_ms=-1
+fallo_perros_ms=-1
