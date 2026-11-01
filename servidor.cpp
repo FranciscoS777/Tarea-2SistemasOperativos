@@ -148,13 +148,29 @@ void despertarTodos(Servidor& servidor) {
 
 void* esperarSenal(void* dato) {
     DatosSenal* datos = static_cast<DatosSenal*>(dato);
-    int senal = 0;
-    if (sigwait(&datos->senales, &senal) == 0 && senal == SIGINT) {
-        datos->servidor->detener.store(true);
-        despertarTodos(*datos->servidor);
-        pthread_mutex_lock(&datos->servidor->salida);
-        cout << "\nCtrl+C recibido. Cerrando las partidas...\n";
-        pthread_mutex_unlock(&datos->servidor->salida);
+
+    while (true) {
+        int senal = 0;
+
+        if (sigwait(&datos->senales, &senal) != 0)
+            break;
+
+        if (senal == SIGUSR1)
+            break;
+
+        if (senal == SIGINT) {
+            bool detenido = datos->servidor->detener.exchange(true);
+
+            if (!detenido) {
+                despertarTodos(*datos->servidor);
+
+                pthread_mutex_lock(&datos->servidor->salida);
+                cout << endl << "Ctrl+C recibido. Cerrando las partidas..."
+                     << endl;
+                pthread_mutex_unlock(&datos->servidor->salida);
+            }
+        }
     }
+
     return nullptr;
 }
