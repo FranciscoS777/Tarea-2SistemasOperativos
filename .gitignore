@@ -3,5 +3,5 @@ torneo_debug
 prueba_unidad
 *.o
 *.log
-build/.vscode/
+build/
 .vscode/

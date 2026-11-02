@@ -32,7 +32,7 @@ void* moverFicha(void* dato) {
             uniform_int_distribution<int> elegir(0, static_cast<int>(opciones.size()) - 1);
             mesa.pendiente[id] = true;
             mesa.solicitudes.push({id, opciones[elegir(azar)]});
-            pthread_cond_signal(&mesa.cambio);
+            pthread_cond_signal(&mesa.hayTrabajo);
             while (mesa.pendiente[id] && !mesa.terminada)
                 pthread_cond_wait(&mesa.cambio, &mesa.mutex);
         }
@@ -81,6 +81,7 @@ void revisarPartida(Mesa& mesa) {
     if (mesa.resultado != EN_CURSO) {
         mesa.terminada = true;
         pthread_cond_broadcast(&mesa.cambio);
+        pthread_cond_broadcast(&mesa.hayTrabajo);
     }
 }
 
@@ -92,7 +93,7 @@ static void esperarCambio(Mesa& mesa) {
         limite.tv_sec++;
         limite.tv_nsec -= 1000000000L;
     }
-    pthread_cond_timedwait(&mesa.cambio, &mesa.mutex, &limite);
+    pthread_cond_timedwait(&mesa.hayTrabajo, &mesa.mutex, &limite);
 }
 
 Resultado jugar(Servidor& servidor, Pareja pareja, int numeroMesa) {
@@ -102,6 +103,7 @@ Resultado jugar(Servidor& servidor, Pareja pareja, int numeroMesa) {
     mesa.numero = numeroMesa;
     pthread_mutex_init(&mesa.mutex, nullptr);
     pthread_cond_init(&mesa.cambio, nullptr);
+    pthread_cond_init(&mesa.hayTrabajo, nullptr);
     fill(mesa.tablero, mesa.tablero + CASILLAS, -1);
     for (int i = 0; i < FICHAS; i++) {
         mesa.posicion[i] = servidor.config.inicial[i];
@@ -113,19 +115,24 @@ Resultado jugar(Servidor& servidor, Pareja pareja, int numeroMesa) {
     pthread_t hilos[FICHAS];
     DatosFicha datos[FICHAS];
     int creados = 0;
+    pthread_attr_t atributos;
+    pthread_attr_init(&atributos);
+    pthread_attr_setstacksize(&atributos, 128 * 1024);
     for (int i = 0; i < FICHAS; i++) {
         if (servidor.detener.load()) break;
         datos[i] = {&mesa, i};
-        if (pthread_create(&hilos[i], nullptr, moverFicha, &datos[i]) != 0) {
+        if (pthread_create(&hilos[i], &atributos, moverFicha, &datos[i]) != 0) {
             pthread_mutex_lock(&mesa.mutex);
             mesa.resultado = (i == 0) ? ABANDONA_PUMA : ABANDONAN_PERROS;
             mesa.terminada = true;
             pthread_cond_broadcast(&mesa.cambio);
+            pthread_cond_broadcast(&mesa.hayTrabajo);
             pthread_mutex_unlock(&mesa.mutex);
             break;
         }
         creados++;
     }
+    pthread_attr_destroy(&atributos);
 
     int ultimoLog = 0;
     int ultimasCapturas = 0;
@@ -167,6 +174,7 @@ Resultado jugar(Servidor& servidor, Pareja pareja, int numeroMesa) {
     pthread_mutex_unlock(&mesa.mutex);
 
     pthread_cond_destroy(&mesa.cambio);
+    pthread_cond_destroy(&mesa.hayTrabajo);
     pthread_mutex_destroy(&mesa.mutex);
     return resultado;
 }

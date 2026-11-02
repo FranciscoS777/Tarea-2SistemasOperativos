@@ -111,6 +111,7 @@ struct Mesa {
     Reloj::time_point inicio;
     pthread_mutex_t mutex;
     pthread_cond_t cambio;
+    pthread_cond_t hayTrabajo;
 };
 
 struct DatosCliente { Servidor* servidor; int id; };
